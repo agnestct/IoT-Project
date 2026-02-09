@@ -1,6 +1,6 @@
 #include "src/ElevatorNet.h"
 #include "src/EnvData.h"
-#include "EduroamWiFi.h"
+#include "src/EduroamWiFi.h"
 
 #define EAP_IDENTITY "wzeng@kth.se"
 #define EAP_USERNAME "wzeng@kth.se"
@@ -26,6 +26,7 @@ void setup() {
   wifi.connect();
   // WifiSetup(ssid, password);
   TimeSetup();
+  ledsetup();
 }
 
 void loop() {
