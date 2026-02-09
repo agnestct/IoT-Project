@@ -2,6 +2,8 @@
 #include "src/EnvData.h"
 #include "src/EduroamWiFi.h"
 #include "src/SparkFun_BMP581_Arduino_Library.h"
+#include <cmath>
+
 
 // Create a new sensor object
 BMP581 pressureSensor;
@@ -26,6 +28,9 @@ const char* firebaseUrl =
   "https://elevatormonitor-3e8cd-default-rtdb.europe-west1.firebasedatabase.app/elevator.json";
   //using https://elevatormonitor-3e8cd.web.app/ as the real-time elevator monitoring dashboard
 
+const float w = -0.02491;
+const float b = 1.95941;
+float baseline = 101089;
 
 void setup() {
   Serial.begin(115200);
@@ -39,9 +44,21 @@ void setup() {
 void loop() {
   
   wifi.maintainConnection();
-  EnvData env = randmEnvData();
+  // EnvData env = randmEnvData();
+  EnvData env;
 
   readSensorData(env.temperature , env.pressure);
+
+  // if(current pattern = idle){
+  //   if(current floor = 2 floor){
+  //   baseline = env.pressure ;
+  // }}
+
+  // baseline = 0.95 * baseline + 0.05 * env.pressure;
+
+  // float newpressure = env.pressure - currentpressure ;
+
+  env.floor = std::round(w * (env.pressure - baseline) + b);
 
   sendToFirebase(
     firebaseUrl,
@@ -63,7 +80,7 @@ void loop() {
   // );
   // } //uncomment this to enable wifi home
 
-  delay(5000);
+  delay(500);
 }
 
 

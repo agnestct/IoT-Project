@@ -67,8 +67,8 @@ bool sendToFirebase(const char* firebaseUrl,
   StaticJsonDocument<200> doc;
   doc["floor"] = floor;
   doc["pressure"] = pressure;
-  doc["temperature"] = temperature;
-  doc["timestamp"] = timestamp;
+  // doc["temperature"] = temperature;
+  // doc["timestamp"] = timestamp;
 
   String payload;
   serializeJson(doc, payload);
