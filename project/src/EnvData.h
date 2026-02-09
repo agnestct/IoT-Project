@@ -11,7 +11,7 @@ struct EnvData {
   float pressure;     // Pa
   float temperature;  // °C
   float height;       // m
-  int   floor;        
+  float   floor;        
 };
 
 EnvData randmEnvData() {

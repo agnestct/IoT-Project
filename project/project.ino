@@ -28,13 +28,13 @@ const char* firebaseUrl =
   "https://elevatormonitor-3e8cd-default-rtdb.europe-west1.firebasedatabase.app/elevator.json";
   //using https://elevatormonitor-3e8cd.web.app/ as the real-time elevator monitoring dashboard
 
-const float w = -0.02491;
-const float b = 1.95941;
-float baseline = 101089;
+const float w = -0.02637;
+const float b = 1.88951;
+float baseline = 101013.6;
 
 void setup() {
   Serial.begin(115200);
-  wifi.connect();
+  // wifi.connect();
   // WifiSetup(ssid, password);
   TimeSetup();
   ledsetup();
@@ -43,7 +43,7 @@ void setup() {
 
 void loop() {
   
-  wifi.maintainConnection();
+  // wifi.maintainConnection();
   // EnvData env = randmEnvData();
   EnvData env;
 
@@ -58,15 +58,19 @@ void loop() {
 
   // float newpressure = env.pressure - currentpressure ;
 
-  env.floor = std::round(w * (env.pressure - baseline) + b);
+  env.floor = w * (env.pressure - baseline) + b;
 
-  sendToFirebase(
-    firebaseUrl,
-    env.floor,
-    env.pressure,
-    env.temperature,
-    getTimeString()
-  );
+  Serial.print(env.pressure);
+  Serial.print(", ");   // separator
+  Serial.println(env.floor);
+
+  // sendToFirebase(
+  //   firebaseUrl,
+  //   env.floor,
+  //   env.pressure,
+  //   env.temperature,
+  //   getTimeString()
+  // );
 
 
   // if (ensureWiFiConnected(ssid, password)) {
@@ -120,4 +124,3 @@ bool readSensorData(float &temperature, float &pressure) {
         return false;
     }
 }
-
