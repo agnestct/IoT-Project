@@ -27,7 +27,7 @@ bool EduroamWiFi::connect() {
         delay(500);
         Serial.print(".");
         counter++;
-        if (counter >= timeoutSeconds * 2) { // 每 500ms 计数
+        if (counter >= timeoutSeconds * 2) {
             Serial.println("\nTimeout, restarting...");
             ESP.restart();
         }

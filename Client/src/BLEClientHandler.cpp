@@ -98,6 +98,9 @@ void BLEClientHandler::begin() {
 }
 
 void BLEClientHandler::update() {
+    static unsigned long lastPrintTime = 0;
+    unsigned long now = millis();
+
     if (doConnect) {
         if (connectToServer()) {
             Serial.println("Connected to BLE server.");
@@ -111,12 +114,12 @@ void BLEClientHandler::update() {
         BLEDevice::getScan()->start(0);
     }
 
-    if (connected) {
+    if (connected && (now - lastPrintTime >= 1000)) {
+        lastPrintTime = now;
+        Serial.print("BLE  ");
         Serial.print("Floor: "); Serial.print(Floor);
         Serial.print("\tPressure: "); Serial.print(Pressure);
         Serial.print("\tMotion Mode: "); Serial.print(Mode);
         Serial.print("\tTime: "); Serial.println(Time);
     }
-
-    delay(1000);
 }

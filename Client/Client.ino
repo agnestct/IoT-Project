@@ -4,7 +4,10 @@
 #include "src/ElevatorNet.h"
 #include "src/EnvData.h"
 
-
+unsigned long lastSendTime = 0;
+const unsigned long sendInterval = 1000; // 1000ms
+float lastFloor = -1; 
+float lastPattern = -1; 
 
 #define EAP_IDENTITY "wzeng@kth.se"
 #define EAP_USERNAME "wzeng@kth.se"
@@ -38,23 +41,24 @@ void loop() {
 
     env.pressure = bleClient.Pressure;
     env.floor = bleClient.Floor;
-
-    Serial.print(env.pressure);
-    Serial.print(", "); 
-    Serial.println(env.floor);
-
+    env.pattern = bleClient.Mode;
 
     ensureWiFiConnected(ssid, password);
-    sendToFirebase(
-    firebaseUrl,
-    env.floor,
-    env.pressure,
-    env.temperature,
-    getTimeString()
 
-    delay(500);
-  );
+    if (env.floor != lastFloor || env.pattern != lastPattern) {
+      lastFloor = env.floor;       
+      lastPattern = env.pattern;      
 
+      sendToFirebase(
+        firebaseUrl,
+        env.floor,
+        env.pattern,
+        env.pressure,
+        env.temperature,
+        getTimeString()
+      );
+    }
 
+  
 
 }

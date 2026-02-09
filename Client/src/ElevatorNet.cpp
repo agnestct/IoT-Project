@@ -52,6 +52,7 @@ String getTimeString() {
 bool sendToFirebase(const char* firebaseUrl,
                     float floor,
                     float pressure,
+                    float pattern,
                     float temperature,
                     const String& timestamp) {
 
@@ -67,8 +68,9 @@ bool sendToFirebase(const char* firebaseUrl,
   StaticJsonDocument<200> doc;
   doc["floor"] = floor;
   doc["pressure"] = pressure;
+  doc["pattern"] = pattern;
   // doc["temperature"] = temperature;
-  // doc["timestamp"] = timestamp;
+  doc["timestamp"] = timestamp;
 
   String payload;
   serializeJson(doc, payload);
@@ -76,6 +78,7 @@ bool sendToFirebase(const char* firebaseUrl,
   int code = http.POST(payload);
 
   if (code > 0) {
+    Serial.println("FireBase  ");
     Serial.println(payload);
     http.end();
     return true;

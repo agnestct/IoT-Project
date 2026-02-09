@@ -16,6 +16,7 @@ String getTimeString();
 bool sendToFirebase(const char* firebaseUrl,
                     float floor,
                     float pressure,
+                    float pattern,
                     float temperature,
                     const String& timestamp);
 
