@@ -1,6 +1,9 @@
 #include "BLEnotifyHandler.h"
 #include <Arduino.h>
 
+unsigned long previousMillisforble = 0;
+const unsigned long intervalforble = 1000; //BLE update period
+
 #define SERVICE_UUID "372208cd-18f9-47f4-b247-bba6aee0792a"
 #define FLOOR_CHAR_UUID "ff62f14e-c79b-40cc-88b8-f810c22436c3"
 #define PRESSURE_CHAR_UUID "7ff73492-7ce2-455e-a2af-5e356af0f039"
@@ -27,7 +30,6 @@ void BLENotifyHandler::begin() {
 
     BLEService* pService = pServer->createService(SERVICE_UUID);
 
-    // 创建四个特征
     floorChar = pService->createCharacteristic(FLOOR_CHAR_UUID,
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
     floorChar->addDescriptor(new BLE2902());
@@ -51,25 +53,29 @@ void BLENotifyHandler::begin() {
 }
 
 void BLENotifyHandler::update() {
+    unsigned long currentMillisforble = millis();
+
     if (deviceConnected) {
-        floorChar->setValue((uint8_t*)&floorValue, sizeof(floorValue));
-        floorChar->notify();
+        if (currentMillisforble - previousMillisforble >= intervalforble) {
+            previousMillisforble = currentMillisforble;
 
-        pressureChar->setValue((uint8_t*)&pressureValue, sizeof(pressureValue));
-        pressureChar->notify();
+            floorChar->setValue((uint8_t*)&floorValue, sizeof(floorValue));
+            floorChar->notify();
 
-        modeChar->setValue((uint8_t*)&motionMode, sizeof(motionMode));
-        modeChar->notify();
+            pressureChar->setValue((uint8_t*)&pressureValue, sizeof(pressureValue));
+            pressureChar->notify();
 
-        timeChar->setValue((uint8_t*)&timeValue, sizeof(timeValue));
-        timeChar->notify();
+            modeChar->setValue((uint8_t*)&motionMode, sizeof(motionMode));
+            modeChar->notify();
 
-        timeValue++;
-        delay(1000);
+            timeChar->setValue((uint8_t*)&timeValue, sizeof(timeValue));
+            timeChar->notify();
+
+            //timeValue++;
+        }
     }
 
     if (!deviceConnected && oldDeviceConnected) {
-        delay(500);
         startAdvertising();
         oldDeviceConnected = deviceConnected;
     }
@@ -85,7 +91,6 @@ void BLENotifyHandler::startAdvertising() {
     BLEDevice::startAdvertising();
 }
 
-// 回调实现
 void BLENotifyHandler::MyServerCallbacks::onConnect(BLEServer* pServer) {
     parent->deviceConnected = true;
 }

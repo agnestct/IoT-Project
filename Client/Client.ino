@@ -34,6 +34,7 @@ void setup() {
     TimeSetup();
     ledsetup();
     bleClient.begin();
+    diodes(0b00001111);
 }
 
 void loop() {
@@ -46,22 +47,21 @@ void loop() {
     env.floor = bleClient.Floor;
     env.pattern = bleClient.Mode;
 
-    ensureWiFiConnected(ssid, password);
+   if(ensureWiFiConnected(ssid, password)){
 
-    if (env.floor != lastFloor || env.pattern != lastPattern) {
-      lastFloor = env.floor;       
-      lastPattern = env.pattern;      
+        if (env.floor != lastFloor || env.pattern != lastPattern) {
+            lastFloor = env.floor;       
+            lastPattern = env.pattern;      
 
-      sendToFirebase(
-        firebaseUrl,
-        env.floor,
-        env.pattern,
-        env.pressure,
-        env.temperature,
-        getTimeString()
-      );
+            sendToFirebase(
+                firebaseUrl,
+                env.floor,
+                env.pattern,
+                env.pressure,
+                env.temperature,
+                getTimeString()
+            );
+        }
     }
-
-  
 
 }

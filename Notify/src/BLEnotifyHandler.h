@@ -11,7 +11,6 @@ public:
     void begin();
     void update();
 
-    // 数据更新接口
     void setFloor(int value) { floorValue = value; }
     void setPressure(float value) { pressureValue = value; }
     void setMode(uint8_t value) { motionMode = value; }
