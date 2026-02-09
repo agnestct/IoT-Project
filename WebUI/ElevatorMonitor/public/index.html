@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Elevator Monitor</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    h1 { color: #333; }
+    .data { font-size: 1.5em; margin: 10px 0; }
+    .label { font-weight: bold; }
+    canvas { margin-top: 30px; }
+
+    .info-container {
+      display: flex;
+      align-items: flex-start;
+      gap: 40px; 
+    }
+    .info-left {
+      display: flex;
+      flex-direction: column;
+    }
+
+    table { border-collapse: collapse; width: 200px; margin-top: 0; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background-color: #f4f4f4; }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDF8QJaXt-0qQhhKSLVvI3jCTXhvWI7UfY",
+      authDomain: "elevatormonitor-3e8cd.firebaseapp.com",
+      databaseURL: "https://elevatormonitor-3e8cd-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "elevatormonitor-3e8cd",
+      storageBucket: "elevatormonitor-3e8cd.firebasedatabase.app",
+      messagingSenderId: "701335486505",
+      appId: "1:701335486505:web:152a2a5fbc563483bedc38"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const floorEl = document.getElementById('floor');
+    const pressureEl = document.getElementById('pressure');
+    const tempEl = document.getElementById('temperature');
+    const timestampEl = document.getElementById('timestamp');
+    const floorTableBody = document.getElementById('floorTableBody');
+
+    const floorPressureCtx = document.getElementById('floorPressureChart').getContext('2d');
+    const floorPressureChart = new Chart(floorPressureCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          { label: 'Floor', data: [], borderColor: 'blue', fill: false, yAxisID: 'yFloor' },
+          { label: 'Pressure (Pa)', data: [], borderColor: 'green', fill: false, yAxisID: 'yPressure' }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { title: { display: true, text: 'Time' } },
+          yFloor: { type: 'linear', position: 'left', title: { display: true, text: 'Floor' }, ticks: { stepSize: 1 } },
+          yPressure: { type: 'linear', position: 'right', title: { display: true, text: 'Pressure (Pa)' }, grid: { drawOnChartArea: false }, reverse: true }
+        }
+      }
+    });
+
+    // const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+    // const tempChart = new Chart(tempCtx, {
+    //   type: 'line',
+    //   data: { labels: [], datasets: [{ label: 'Temperature (°C)', data: [], borderColor: 'red', fill: false }] },
+    //   options: {
+    //     responsive: true,
+    //     scales: { x: { title: { display: true, text: 'Time' } }, y: { title: { display: true, text: 'Temperature (°C)' } } }
+    //   }
+    // });
+
+    const floorCounts = {}; 
+
+    function updateCharts(timeLabel, floor, pressure, temperature) {
+      floorPressureChart.data.labels.push(timeLabel);
+      floorPressureChart.data.datasets[0].data.push(floor);
+      floorPressureChart.data.datasets[1].data.push(pressure);
+      if (floorPressureChart.data.labels.length > 50) {
+        floorPressureChart.data.labels.shift();
+        floorPressureChart.data.datasets.forEach(ds => ds.data.shift());
+      }
+      floorPressureChart.update();
+
+      // tempChart.data.labels.push(timeLabel);
+      // tempChart.data.datasets[0].data.push(temperature);
+      // if (tempChart.data.labels.length > 50) {
+      //   tempChart.data.labels.shift();
+      //   tempChart.data.datasets[0].data.shift();
+      // }
+      // tempChart.update();
+    }
+
+    function updateFloorTable(floor) {
+      if (floorCounts[floor] === undefined) floorCounts[floor] = 1;
+      else floorCounts[floor] += 1;
+
+      floorTableBody.innerHTML = '';
+
+      Object.keys(floorCounts).sort((a,b)=>a-b).forEach(f => {
+        const tr = document.createElement('tr');
+        const tdFloor = document.createElement('td');
+        const tdCount = document.createElement('td');
+        tdFloor.innerText = f;
+        tdCount.innerText = floorCounts[f];
+        tr.appendChild(tdFloor);
+        tr.appendChild(tdCount);
+        floorTableBody.appendChild(tr);
+      });
+    }
+
+    const elevatorRef = ref(db, 'elevator');
+    onChildAdded(elevatorRef, (snapshot) => {
+      const data = snapshot.val();
+      floorEl.innerText = data.floor;
+      pressureEl.innerText = data.pressure;
+      tempEl.innerText = data.temperature;
+      timestampEl.innerText = data.timestamp;
+
+      updateCharts(data.timestamp, data.floor, data.pressure, data.temperature);
+      updateFloorTable(data.floor);
+    });
+  </script>
+</head>
+<body>
+  <h1>Elevator Monitor</h1>
+
+  <div class="info-container">
+    <div class="info-left">
+      <div class="data"><span class="label">Current Floor:</span> <span id="floor">-</span></div>
+      <div class="data"><span class="label">Pressure:</span> <span id="pressure">-</span> Pa</div>
+      <div class="data"><span class="label">Temperature:</span> <span id="temperature">-</span> °C</div>
+      <div class="data"><span class="label">Timestamp:</span> <span id="timestamp">-</span></div>
+    </div>
+
+    <div>
+      <h2>Floor Stop Count</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Floor</th>
+            <th>Stop Count</th>
+          </tr>
+        </thead>
+        <tbody id="floorTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <canvas id="floorPressureChart" width="900" height="400"></canvas>
+  <canvas id="temperatureChart" width="900" height="400"></canvas>
+</body>
+</html>
