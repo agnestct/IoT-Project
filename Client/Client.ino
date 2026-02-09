@@ -28,6 +28,9 @@ const char* firebaseUrl =
 BLEClientHandler bleClient;
 
 void setup() {
+    Serial.begin(115200);
+  // wifi.connect();
+    WifiSetup(ssid, password);
     TimeSetup();
     ledsetup();
     bleClient.begin();
