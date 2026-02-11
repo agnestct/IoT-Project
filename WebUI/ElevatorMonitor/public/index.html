@@ -50,6 +50,14 @@
     const timestampEl = document.getElementById('timestamp');
     const floorTableBody = document.getElementById('floorTableBody');
 
+    // NEW - For Current Travel Pattern
+    const currentDirectionEl = document.getElementById('currentDirection'); // NEW
+    const currentTripEl = document.getElementById('currentTrip'); // NEW
+
+    let lastFloorValue = null; // NEW
+    let lastDirection = null; // NEW
+    let currentTrip = []; // NEW
+
     const floorPressureCtx = document.getElementById('floorPressureChart').getContext('2d');
     const floorPressureChart = new Chart(floorPressureCtx, {
       type: 'line',
@@ -119,6 +127,15 @@
       });
     }
 
+    // NEW - Mini Chart for Current Trip
+    const tripCtx = document.getElementById('currentTripChart').getContext('2d'); // NEW
+    const tripChart = new Chart(tripCtx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'Floor', data: [], borderColor: 'orange', fill: false }] },
+      options: { responsive: true, scales: { x: { title: { display: true, text: 'Time' } }, y: { stepSize: 1 } } }
+    });
+    //NEW end
+
     const elevatorRef = ref(db, 'elevator');
     onChildAdded(elevatorRef, (snapshot) => {
       const data = snapshot.val();
@@ -130,54 +147,40 @@
       updateCharts(data.timestamp, data.floor, data.pressure, data.temperature);
       updateFloorTable(data.floor);
 
-      //Adding Elevator patterns 
-      const elevatorId = data.elevatorId || "Elevator1"; // use ID from Firebase
-      const timeLabel = data.timestamp;
-      const floor = data.floor;
-
-      if (!elevatorDatasets[elevatorId]) {
-        // Create new dataset for this elevator
-        const color = '#' + Math.floor(Math.random()*16777215).toString(16); // random color
-        const newDataset = {
-          label: elevatorId,
-          data: [],
-          borderColor: color,
-          fill: false,
-          tension: 0.2
-        };
-        multiElevatorChart.data.datasets.push(newDataset);
-        elevatorDatasets[elevatorId] = newDataset;
+      // NEW: Current Travel Pattern Analysis ---
+      let direction = "Stopped";
+      if (lastFloorValue !== null) {
+        if (currentFloor > lastFloorValue) direction = "Up";
+        else if (currentFloor < lastFloorValue) direction = "Down";
       }
 
-      // Add new point
-      elevatorDatasets[elevatorId].data.push({ x: timeLabel, y: floor });
-
-      // Keep chart readable: last 50 points per dataset
-      multiElevatorChart.data.datasets.forEach(ds => {
-        if(ds.data.length > 50) ds.data.shift();
-      });
-      multiElevatorChart.data.labels.push(timeLabel);
-      if(multiElevatorChart.data.labels.length > 50) multiElevatorChart.data.labels.shift();
-
-      multiElevatorChart.update();
-    });
-
-    const multiElevatorCtx = document.getElementById('multiElevatorChart').getContext('2d');
-    const multiElevatorChart = new Chart(multiElevatorCtx, {
-      type: 'line',
-      data: { labels: [], datasets: [] },
-      options: {
-        responsive: true,
-        scales: {
-          x: { title: { display: true, text: 'Time' } },
-          y: { title: { display: true, text: 'Floor' }, ticks: { stepSize: 1 } }
+      // Track current trip
+      if (direction !== "Stopped") {
+        if (lastDirection && direction !== lastDirection) {
+          // Trip completed, start new trip
+          currentTrip = [lastFloorValue, currentFloor];
+        } else {
+          currentTrip.push(currentFloor);
         }
       }
-    });
 
-    // Keep track of datasets per elevator
-    const elevatorDatasets = {};
-    //Ending elevator patterns
+      lastFloorValue = currentFloor;
+      lastDirection = direction;
+
+      // Update UI
+      currentDirectionEl.innerText = direction; // NEW
+      currentTripEl.innerText = currentTrip.join(" → "); // NEW
+
+      // Update mini chart
+      tripChart.data.labels.push(timestamp);
+      tripChart.data.datasets[0].data.push(currentFloor);
+      if(tripChart.data.labels.length > 20) {
+        tripChart.data.labels.shift();
+        tripChart.data.datasets[0].data.shift();
+      }
+      tripChart.update();
+      // NEW end
+    });
 
   </script>
 </head>
@@ -208,7 +211,11 @@
 
   <canvas id="floorPressureChart" width="900" height="400"></canvas>
   <canvas id="temperatureChart" width="900" height="400"></canvas>
-  <h4>Elevator Travel Patterns</h4>
-  <canvas id="multiElevatorChart" width="900" height="400"></canvas> 
+
+  <h4>Current Trip Pattern</h4> <!-- NEW -->
+  <canvas id="currentTripChart" width="900" height="200"></canvas> <!-- NEW -->
+
+  <h4>Elevator Travel Patterns</h4> <!-- NEW -->
+  <canvas id="multiElevatorChart" width="900" height="400"></canvas> <!-- NEW -->
 </body>
 </html>
