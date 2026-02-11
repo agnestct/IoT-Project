@@ -4,33 +4,32 @@
   <meta charset="UTF-8">
   <title>Elevator Monitor</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 40px; }
-    h1 { color: #333; }
-    .data { font-size: 1.5em; margin: 10px 0; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { color: #333; margin-bottom: 20px; }
+    .data { font-size: 1.2em; margin: 5px 0; }
     .label { font-weight: bold; }
-    canvas { margin-top: 30px; }
+    canvas { margin-top: 20px; display: block; }
 
     .info-container {
       display: flex;
       align-items: flex-start;
-      gap: 40px; 
-    }
-    .info-left {
-      display: flex;
-      flex-direction: column;
+      gap: 30px;
+      margin-bottom: 20px;
     }
 
+    .info-left { display: flex; flex-direction: column; }
+
     table { border-collapse: collapse; width: 200px; margin-top: 0; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th, td { border: 1px solid #ccc; padding: 5px; text-align: center; font-size: 0.9em; }
     th { background-color: #f4f4f4; }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDF8QJaXt-0qQhhKSLVvI3jCTXhvWI7UfY",
       authDomain: "elevatormonitor-3e8cd.firebaseapp.com",
@@ -44,20 +43,21 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // DOM elements
     const floorEl = document.getElementById('floor');
     const pressureEl = document.getElementById('pressure');
     const tempEl = document.getElementById('temperature');
     const timestampEl = document.getElementById('timestamp');
+    const currentDirectionEl = document.getElementById('currentDirection');
+    const currentTripEl = document.getElementById('currentTrip');
     const floorTableBody = document.getElementById('floorTableBody');
 
-    // NEW - For Current Travel Pattern
-    const currentDirectionEl = document.getElementById('currentDirection'); // NEW
-    const currentTripEl = document.getElementById('currentTrip'); // NEW
+    let lastFloorValue = null;
+    let lastDirection = null;
+    let currentTrip = [];
+    const floorCounts = {};
 
-    let lastFloorValue = null; // NEW
-    let lastDirection = null; // NEW
-    let currentTrip = []; // NEW
-
+    // Floor vs Pressure Chart
     const floorPressureCtx = document.getElementById('floorPressureChart').getContext('2d');
     const floorPressureChart = new Chart(floorPressureCtx, {
       type: 'line',
@@ -78,19 +78,21 @@
       }
     });
 
-    // const tempCtx = document.getElementById('temperatureChart').getContext('2d');
-    // const tempChart = new Chart(tempCtx, {
-    //   type: 'line',
-    //   data: { labels: [], datasets: [{ label: 'Temperature (°C)', data: [], borderColor: 'red', fill: false }] },
-    //   options: {
-    //     responsive: true,
-    //     scales: { x: { title: { display: true, text: 'Time' } }, y: { title: { display: true, text: 'Temperature (°C)' } } }
-    //   }
-    // });
+    // Current Trip Chart
+    const tripCtx = document.getElementById('currentTripChart').getContext('2d');
+    const tripChart = new Chart(tripCtx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'Floor', data: [], borderColor: 'orange', fill: false }] },
+      options: {
+        responsive: true,
+        scales: {
+          x: { title: { display: true, text: 'Time' } },
+          y: { stepSize: 1, title: { display: true, text: 'Floor' } }
+        }
+      }
+    });
 
-    const floorCounts = {}; 
-
-    function updateCharts(timeLabel, floor, pressure, temperature) {
+    function updateCharts(timeLabel, floor, pressure) {
       floorPressureChart.data.labels.push(timeLabel);
       floorPressureChart.data.datasets[0].data.push(floor);
       floorPressureChart.data.datasets[1].data.push(pressure);
@@ -99,14 +101,6 @@
         floorPressureChart.data.datasets.forEach(ds => ds.data.shift());
       }
       floorPressureChart.update();
-
-      // tempChart.data.labels.push(timeLabel);
-      // tempChart.data.datasets[0].data.push(temperature);
-      // if (tempChart.data.labels.length > 50) {
-      //   tempChart.data.labels.shift();
-      //   tempChart.data.datasets[0].data.shift();
-      // }
-      // tempChart.update();
     }
 
     function updateFloorTable(floor) {
@@ -114,7 +108,6 @@
       else floorCounts[floor] += 1;
 
       floorTableBody.innerHTML = '';
-
       Object.keys(floorCounts).sort((a,b)=>a-b).forEach(f => {
         const tr = document.createElement('tr');
         const tdFloor = document.createElement('td');
@@ -127,38 +120,32 @@
       });
     }
 
-    // NEW - Mini Chart for Current Trip
-    const tripCtx = document.getElementById('currentTripChart').getContext('2d'); // NEW
-    const tripChart = new Chart(tripCtx, {
-      type: 'line',
-      data: { labels: [], datasets: [{ label: 'Floor', data: [], borderColor: 'orange', fill: false }] },
-      options: { responsive: true, scales: { x: { title: { display: true, text: 'Time' } }, y: { stepSize: 1 } } }
-    });
-    //NEW end
-
+    // Firebase listener
     const elevatorRef = ref(db, 'elevator');
     onChildAdded(elevatorRef, (snapshot) => {
       const data = snapshot.val();
-      floorEl.innerText = data.floor;
+      const currentFloor = Math.round(data.floor); // Round to nearest floor
+
+      // Update DOM
+      floorEl.innerText = currentFloor;
       pressureEl.innerText = data.pressure;
       tempEl.innerText = data.temperature;
       timestampEl.innerText = data.timestamp;
 
-      updateCharts(data.timestamp, data.floor, data.pressure, data.temperature);
-      updateFloorTable(data.floor);
+      // Update charts & table
+      updateCharts(data.timestamp, currentFloor, data.pressure);
+      updateFloorTable(currentFloor);
 
-      // NEW: Current Travel Pattern Analysis ---
+      // Travel pattern
       let direction = "Stopped";
       if (lastFloorValue !== null) {
         if (currentFloor > lastFloorValue) direction = "Up";
         else if (currentFloor < lastFloorValue) direction = "Down";
       }
 
-      // Track current trip
       if (direction !== "Stopped") {
         if (lastDirection && direction !== lastDirection) {
-          // Trip completed, start new trip
-          currentTrip = [lastFloorValue, currentFloor];
+          currentTrip = [lastFloorValue, currentFloor]; // new trip
         } else {
           currentTrip.push(currentFloor);
         }
@@ -167,19 +154,18 @@
       lastFloorValue = currentFloor;
       lastDirection = direction;
 
-      // Update UI
-      currentDirectionEl.innerText = direction; // NEW
-      currentTripEl.innerText = currentTrip.join(" → "); // NEW
+      // Update trip UI
+      currentDirectionEl.innerText = direction;
+      currentTripEl.innerText = currentTrip.join(" - ");
 
       // Update mini chart
-      tripChart.data.labels.push(timestamp);
+      tripChart.data.labels.push(data.timestamp);
       tripChart.data.datasets[0].data.push(currentFloor);
-      if(tripChart.data.labels.length > 20) {
+      if (tripChart.data.labels.length > 20) {
         tripChart.data.labels.shift();
         tripChart.data.datasets[0].data.shift();
       }
       tripChart.update();
-      // NEW end
     });
 
   </script>
@@ -192,6 +178,8 @@
       <div class="data"><span class="label">Current Floor:</span> <span id="floor">-</span></div>
       <div class="data"><span class="label">Pressure:</span> <span id="pressure">-</span> Pa</div>
       <div class="data"><span class="label">Temperature:</span> <span id="temperature">-</span> °C</div>
+      <div class="data"><span class="label">Direction:</span> <span id="currentDirection">-</span></div>
+      <div class="data"><span class="label">Current Trip:</span> <span id="currentTrip">-</span></div>
       <div class="data"><span class="label">Timestamp:</span> <span id="timestamp">-</span></div>
     </div>
 
@@ -209,13 +197,8 @@
     </div>
   </div>
 
-  <canvas id="floorPressureChart" width="900" height="400"></canvas>
-  <canvas id="temperatureChart" width="900" height="400"></canvas>
-
-  <h4>Current Trip Pattern</h4> <!-- NEW -->
-  <canvas id="currentTripChart" width="900" height="200"></canvas> <!-- NEW -->
-
-  <h4>Elevator Travel Patterns</h4> <!-- NEW -->
-  <canvas id="multiElevatorChart" width="900" height="400"></canvas> <!-- NEW -->
+  <canvas id="floorPressureChart" width="900" height="300"></canvas>
+  <h4>Current Trip Pattern</h4>
+  <canvas id="currentTripChart" width="900" height="200"></canvas>
 </body>
 </html>
