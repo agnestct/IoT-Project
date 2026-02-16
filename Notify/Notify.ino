@@ -45,6 +45,11 @@ void IRAM_ATTR updateBaselineInterrupt() {
 }
 
 
+int lastPattern = STATE_IDLE;  
+int movementStartFloor = -1;  
+int movementEndFloor = -1; 
+
+
 void setup() {
     Serial.begin(115200);
     bleServer.begin();
@@ -76,30 +81,20 @@ void loop() {
 
   env.floor = w * (env.pressure - baseline) + b;
 
-
   double currentpressure = env.pressure;
   patterndection(currentpressure);
 
-
-
-  
-
-  // if (currentMillis - startMillis <= 40000) {   
   if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-
-    Serial.print("Pressure: ");
-    Serial.print(env.pressure);
-    // Serial.print(" Pa, temperature: ");
-    // Serial.println(env.temperature);
-    Serial.print(" floor: ");
-    Serial.print(env.floor);
-    Serial.print(" baseline: ");
-    Serial.print(baseline);
-
-
-     }
-    // }
+        previousMillis = currentMillis;
+        Serial.print("Pressure: ");
+        Serial.print(env.pressure);
+        // Serial.print(" Pa, temperature: ");
+        // Serial.println(env.temperature);
+        Serial.print(" floor: ");
+        Serial.print(env.floor);
+        Serial.print(" baseline: ");
+        Serial.print(baseline);
+    }   
 
 
     floorInt = round(env.floor);
@@ -109,29 +104,109 @@ void loop() {
 
     diodes(1 << floorInt); 
 
-  if (env.pattern == STATE_IDLE && floorInt >= 2 && floorInt <= 7) 
-  {
+  if (env.pattern == STATE_IDLE && floorInt >= 2 && floorInt <= 7) {
       int index = floorInt - 2;
       float current_offset = FLOOR_OFFSETS[index];
       baseline = (env.pressure + current_offset) * 0.05f + baseline * 0.95f;
       Serial.println(" baseline updated ");
+    }
 
-
-  }
-
-  delay(100);
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  int traj = trackMovement(env.pattern, floorInt); 
+  if (traj != -1) {
+    int startFloor = traj & 0x0F;
+    int endFloor = (traj >> 4) & 0x0F;
+    Serial.print("Trajectory: ");
+    Serial.print(startFloor);
+    Serial.print(" -> ");
+    Serial.println(endFloor);
+    }
+  bleServer.setMode(traj);//did not test yet
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
     
   bleServer.setFloor(env.floor);
   bleServer.setPressure(env.pressure);
+
   bleServer.update();
   //BLE update period is defined in BLEnotifyHandler.cpp
 }
 
 
-void dataprint()
-{
-    
+
+
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+int trackMovement(int currentPattern, float currentFloor) {
+    static int trajectory = -1;
+
+    if (lastPattern == STATE_IDLE && currentPattern == STATE_MOVING) {
+        movementStartFloor = round(currentFloor);
+        Serial.print("Movement started at floor: ");
+        Serial.println(movementStartFloor);
+    } 
+    else if (lastPattern == STATE_MOVING && currentPattern == STATE_IDLE) {
+        movementEndFloor = round(currentFloor);
+        Serial.print("Movement ended at floor: ");
+        Serial.println(movementEndFloor);
+
+        Serial.print("Movement: from floor ");
+        Serial.print(movementStartFloor);
+        Serial.print(" to floor ");
+        Serial.println(movementEndFloor);
+
+        trajectory = ((movementEndFloor & 0x0F) << 4) | (movementStartFloor & 0x0F);
+        movementStartFloor = -1;
+        movementEndFloor = -1;
+    }
+    lastPattern = currentPattern;  
+    return trajectory;
 }
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
+  //warning............................................................
 
 
 void patterndection(double x) {
@@ -151,7 +226,6 @@ void patterndection(double x) {
     Serial.print(mu_hat);
     Serial.print(" T=");
     Serial.println(T);
-
 
     if (T > gamma_th) {
         env.pattern = STATE_MOVING;
