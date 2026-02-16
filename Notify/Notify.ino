@@ -29,6 +29,7 @@ BLENotifyHandler bleServer;
 BMP581 pressureSensor;
 EnvData env;
 
+int floorInt=0;
 
 
 volatile uint32_t lastInterruptTime = 0; 
@@ -92,23 +93,30 @@ void loop() {
     // Serial.print(" Pa, temperature: ");
     // Serial.println(env.temperature);
     Serial.print(" floor: ");
-    Serial.println(env.floor);
+    Serial.print(env.floor);
+    Serial.print(" baseline: ");
+    Serial.print(baseline);
 
-    int floorInt = round(env.floor);
+
+     }
+    // }
+
+
+    floorInt = round(env.floor);
 
     if (floorInt < 0) floorInt = 0;
     if (floorInt > 7) floorInt = 7;
 
     diodes(1 << floorInt); 
-  }
-    // }
-    env.pattern=1;
 
-  if (env.pattern == STATE_IDLE && env.floor >= 2 && env.floor <= 7) 
+  if (env.pattern == STATE_IDLE && floorInt >= 2 && floorInt <= 7) 
   {
-      int index = env.floor - 2;
+      int index = floorInt - 2;
       float current_offset = FLOOR_OFFSETS[index];
       baseline = (env.pressure + current_offset) * 0.05f + baseline * 0.95f;
+      Serial.println(" baseline updated ");
+
+
   }
 
   delay(100);
@@ -120,7 +128,10 @@ void loop() {
 }
 
 
-
+void dataprint()
+{
+    
+}
 
 
 void patterndection(double x) {
@@ -136,19 +147,19 @@ void patterndection(double x) {
 
     float T = (x - mu_hat) * (x - mu_hat) / sigma2_hat;
 
-    Serial.print("mu=");
+    Serial.print(" mu=");
     Serial.print(mu_hat);
-    Serial.print("  T=");
+    Serial.print(" T=");
     Serial.println(T);
 
 
     if (T > gamma_th) {
         env.pattern = STATE_MOVING;
-        Serial.print("STATE_MOVING ");
+        Serial.print(" STATE_MOVING ");
 //        diodes(0b00000001); // LED ON
     } else {
         env.pattern = STATE_IDLE;
-        Serial.print("STATE_IDLE ");
+        Serial.print(" STATE_IDLE ");
  //       diodes(0b00000000);   // LED OFF
     }
 }
