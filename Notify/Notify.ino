@@ -111,6 +111,8 @@ void loop() {
       Serial.println(" baseline updated ");
     }
 
+
+
   //warning............................................................
   //warning............................................................
   //warning............................................................
@@ -148,7 +150,7 @@ void loop() {
   //warning............................................................
   //warning............................................................
     
-  bleServer.setFloor(env.floor);
+  bleServer.setFloor(floorInt);
   bleServer.setPressure(env.pressure);
 
   bleServer.update();
