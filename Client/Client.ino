@@ -27,31 +27,79 @@ const char* firebaseUrl =
 
 BLEClientHandler bleClient;
 
+bool debug = true;
+
+unsigned long previousMillis = 0;
+const long interval = 10000; 
+
+EnvData env;
+
+
 void setup() {
     Serial.begin(115200);
-    wifi.connect();
-    //WifiSetup(ssid, password);
+
+
+    if (debug) {
+        WifiSetup(ssid, password);     
+    } else {
+        wifi.connect();  
+    }
+
     TimeSetup();
     ledsetup();
     bleClient.begin();
-    diodes(0b00001111);
+    diodes(0b00000000);
 }
 
 void loop() {
-    bleClient.update();
-    // wifi.maintainConnection();
 
-    EnvData env;
+    
+//     bleClient.update();
+//     // wifi.maintainConnection();
 
-    env.pressure = bleClient.Pressure;
-    env.floor = bleClient.Floor;
-    env.pattern = bleClient.Mode;
 
-   if(ensureWiFiConnected(ssid, password)){
+//     env.pressure = bleClient.Pressure;
+//     env.floor = bleClient.Floor;
+//     env.pattern = bleClient.Mode;
 
-        if (env.floor != lastFloor || env.pattern != lastPattern) {
-            lastFloor = env.floor;       
-            lastPattern = env.pattern;      
+
+    
+
+//    if(ensureWiFiConnected(ssid, password)){
+
+//         if (env.floor != lastFloor || env.pattern != lastPattern) {
+//             lastFloor = env.floor;       
+//             lastPattern = env.pattern;      
+
+//             sendToFirebase(
+//                 firebaseUrl,
+//                 env.floor,
+//                 env.pressure,
+//                 env.pattern,
+//                 env.temperature,
+//                 getTimeString()
+//             );
+//         }
+//     }
+    unsigned long currentMillis = millis();
+
+    int startFloor = random(2, 7); // 假设楼层范围 0~15
+    int endFloor   = random(2, 7);
+    int fakepressure   = random(9000, 11000);
+
+    int traj = (endFloor << 4) | startFloor;
+
+    if (ensureWiFiConnected(ssid, password)) {
+        if (currentMillis - previousMillis >= interval) {
+            previousMillis = currentMillis;
+
+            env.pressure = fakepressure;
+            env.floor = endFloor;
+            env.pattern = traj;
+            env.temperature =1;
+
+            lastFloor = env.floor;
+            lastPattern = env.pattern;
 
             sendToFirebase(
                 firebaseUrl,

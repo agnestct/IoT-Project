@@ -53,7 +53,7 @@ bool sendToFirebase(const char* firebaseUrl,
                     float floor,
                     float pressure,
                     float pattern,
-                    float temperature,
+                    float alarmflag,
                     const String& timestamp) {
 
   if (WiFi.status() != WL_CONNECTED) {
@@ -69,7 +69,7 @@ bool sendToFirebase(const char* firebaseUrl,
   doc["floor"] = floor;
   doc["pressure"] = pressure;
   doc["pattern"] = pattern;
-  // doc["temperature"] = temperature;
+  doc["alarmflag"] = alarmflag;
   doc["timestamp"] = timestamp;
 
   String payload;
