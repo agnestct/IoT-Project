@@ -1,8 +1,0 @@
-{
-  "projects": {
-    "default": "elevatormonitor-3e8cd",
-    "first/default": "iot-project-demo-94e17"
-  },
-  "targets": {},
-  "etags": {}
-}
