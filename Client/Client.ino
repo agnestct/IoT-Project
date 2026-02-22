@@ -27,12 +27,13 @@ const char* firebaseUrl =
 
 BLEClientHandler bleClient;
 
-bool debug = false;
+bool debug = true;
 
 unsigned long previousMillis = 0;
-const long interval = 10000; 
 
 EnvData env;
+
+int AlarmFlag=0;
 
 
 void setup() {
@@ -61,55 +62,29 @@ void loop() {
     env.pressure = bleClient.Pressure;
     env.floor = bleClient.Floor;
     env.pattern = bleClient.Mode;
+    AlarmFlag = bleClient.Time;
 
+    
 
     
 
    if(ensureWiFiConnected(ssid, password)){
 
-        if (env.floor != lastFloor || env.pattern != lastPattern) {
+        if (env.floor != lastFloor) {
             lastFloor = env.floor;       
-            lastPattern = env.pattern;      
+            lastPattern = env.pattern;  
 
+            diodes(0b11111111);    
             sendToFirebase(
                 firebaseUrl,
                 env.floor,
                 env.pressure,
                 env.pattern,
-                env.temperature,
-                getTimeString()
+                AlarmFlag,
+                getTimeString() 
             );
+            diodes(0b00000000);
         }
     }
-    // unsigned long currentMillis = millis();
-
-    // int startFloor = random(2, 7); 
-    // int endFloor   = random(2, 7);
-    // int fakepressure   = random(9000, 11000);
-
-    // int traj = (endFloor << 4) | startFloor;
-
-    // if (ensureWiFiConnected(ssid, password)) {
-    //     if (currentMillis - previousMillis >= interval) {
-    //         previousMillis = currentMillis;
-
-    //         env.pressure = fakepressure;
-    //         env.floor = endFloor;
-    //         env.pattern = traj;
-    //         env.temperature =1;
-
-    //         lastFloor = env.floor;
-    //         lastPattern = env.pattern;
-
-    //         sendToFirebase(
-    //             firebaseUrl,
-    //             env.floor,
-    //             env.pressure,
-    //             env.pattern,
-    //             env.temperature,
-    //             getTimeString()
-    //         );
-    //     }
-    // }
-
+   
 }

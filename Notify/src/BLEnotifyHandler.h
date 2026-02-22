@@ -16,6 +16,12 @@ public:
     void setMode(uint8_t value) { motionMode = value; }
     void setTime(uint32_t value) { timeValue = value; }
 
+    bool isConnected() {return deviceConnected;}
+    void restartAdvertising() {startAdvertising(); }
+
+    unsigned long connectTime = 0; 
+    bool justConnected = false;     
+
 private:
     BLEServer* pServer;
     BLECharacteristic* floorChar;

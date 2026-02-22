@@ -39,6 +39,7 @@ void BLEClientHandler::notifyCallback(BLERemoteCharacteristic *pBLERemoteCharact
     else if (uuid.equals(timeUUID)) {
         memcpy(&Time, pData, sizeof(Time));
     }
+
 }
 
 void BLEClientHandler::MyClientCallback::onDisconnect(BLEClient *pclient) {
@@ -114,12 +115,12 @@ void BLEClientHandler::update() {
         BLEDevice::getScan()->start(0);
     }
 
-    if (connected && (now - lastPrintTime >= 1000)) {
+    if (connected && (now - lastPrintTime >=300)) {
         lastPrintTime = now;
         Serial.print("BLE  ");
         Serial.print("Floor: "); Serial.print(Floor);
         Serial.print("\tPressure: "); Serial.print(Pressure);
         Serial.print("\tMotion Mode: "); Serial.print(Mode);
-        Serial.print("\tTime: "); Serial.println(Time);
+        Serial.print("\tAlarmFlag: "); Serial.println(Time);
     }
 }

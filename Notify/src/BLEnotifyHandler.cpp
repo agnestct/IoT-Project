@@ -4,6 +4,10 @@
 unsigned long previousMillisforble = 0;
 const unsigned long intervalforble = 1000; //BLE update period
 
+unsigned long connectTime = 0;
+const unsigned long waitAfterConnect = 2000; 
+bool justConnected = false;
+
 #define SERVICE_UUID "372208cd-18f9-47f4-b247-bba6aee0792a"
 #define FLOOR_CHAR_UUID "ff62f14e-c79b-40cc-88b8-f810c22436c3"
 #define PRESSURE_CHAR_UUID "7ff73492-7ce2-455e-a2af-5e356af0f039"
@@ -56,6 +60,16 @@ void BLENotifyHandler::update() {
     unsigned long currentMillisforble = millis();
 
     if (deviceConnected) {
+
+        // 刚连接，等待客户端初始化
+        if (justConnected) {
+            if (currentMillisforble - connectTime < waitAfterConnect) {
+                return;  // 等待
+            } else {
+                justConnected = false; // 等够时间了，清标记
+            }
+        }
+
         if (currentMillisforble - previousMillisforble >= intervalforble) {
             previousMillisforble = currentMillisforble;
 
@@ -70,8 +84,6 @@ void BLENotifyHandler::update() {
 
             timeChar->setValue((uint8_t*)&timeValue, sizeof(timeValue));
             timeChar->notify();
-
-            //timeValue++;
         }
     }
 
@@ -85,6 +97,7 @@ void BLENotifyHandler::update() {
     }
 }
 
+
 void BLENotifyHandler::startAdvertising() {
     BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
@@ -93,6 +106,8 @@ void BLENotifyHandler::startAdvertising() {
 
 void BLENotifyHandler::MyServerCallbacks::onConnect(BLEServer* pServer) {
     parent->deviceConnected = true;
+    parent->connectTime = millis();
+    parent->justConnected = true; 
 }
 
 void BLENotifyHandler::MyServerCallbacks::onDisconnect(BLEServer* pServer) {
