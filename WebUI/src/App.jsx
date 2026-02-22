@@ -4,6 +4,7 @@ import { db } from "./firebase";
 import StatusCard from "./components/StatusCard";
 import AlarmPanel from "./components/AlarmPanel";
 import ReportChart from "./components/ReportChart";
+import FlowSpikeChart from "./components/FlowSpikeChart"; 
 
 function App() {
   const [latestElevator, setLatestElevator] = useState(null);
@@ -36,7 +37,11 @@ function App() {
         <AlarmPanel elevator={latestElevator} />
       </div>
     </div>
-    <ReportChart history={history} />
+        <h2>Elevator Floor History & Flow Spikes</h2>
+        {/* 原有图表 */}
+        <ReportChart history={history} />
+        {/* 新增突增检测图表 */}
+        <FlowSpikeChart data={history} />
   </div>
 );
 }

@@ -18,23 +18,33 @@ function ReportChart({ history }) {
   const historyData = chartData.slice().reverse();
 
   const floorSummary = history.reduce(
-    (acc, item) => {
-      if (item.floor >= 2 && item.floor <= 7) acc[item.floor] += 1;
-      else acc.other += 1;
-      return acc;
-    },
-    { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, other: 0 }
-  );
+  (acc, item) => {
+    if (item.floor >= 2 && item.floor <= 7) acc[item.floor] += 1;
+    else acc.other += 1;
+    return acc;
+  },
+  { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, other: 0 }
+);
+
+  const floorLabels = {
+    2: "Floor 2",
+    3: "Floor 3",
+    4: "Floor 4",
+    5: "Floor 5",
+    6: "Floor 6",
+    7: "Floor 7",
+    other: "Other"
+  };
 
   return (
     <div style={{ padding: 15, backgroundColor: "#fff" }}>
-      <h2>Report</h2>
+      <h2>Report of floor count</h2>
 
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
         {Object.keys(floorSummary).map(key => (
           <div key={key} style={{ flex: 1, textAlign: "center", border: "1px solid #ccc", margin: "0 2px", padding: 5 }}>
-            <strong>{key}</strong>
-            <div>{floorSummary[key]}</div>
+            <strong>{floorLabels[key]}</strong> 
+            <div>{floorSummary[key]}</div>      
           </div>
         ))}
       </div>
