@@ -38,9 +38,7 @@ function App() {
       </div>
     </div>
         <h2>Elevator Floor History & Flow Spikes</h2>
-        {/* 原有图表 */}
         <ReportChart history={history} />
-        {/* 新增突增检测图表 */}
         <FlowSpikeChart data={history} />
   </div>
 );
