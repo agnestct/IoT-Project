@@ -11,13 +11,13 @@ int MovementTracker::trackMovement(int currentPattern, float currentFloor) {
 
     if (lastPattern == STATE_IDLE && currentPattern == STATE_MOVING) {
         movementStartFloor = round(currentFloor);
-        Serial.print("Movement started at floor: ");
-        Serial.println(movementStartFloor);
+        // Serial.print("Movement started at floor: ");
+        // Serial.println(movementStartFloor);
     } 
     else if (lastPattern == STATE_MOVING && currentPattern == STATE_IDLE) {
         movementEndFloor = round(currentFloor);
-        Serial.print("Movement ended at floor: ");
-        Serial.println(movementEndFloor);
+        // Serial.print("Movement ended at floor: ");
+        // Serial.println(movementEndFloor);
 
         Serial.print("Movement: from floor ");
         Serial.print(movementStartFloor);

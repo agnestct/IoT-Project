@@ -66,16 +66,12 @@ struct BLEPacket {
 };
 
 BLEPacket dataQueue[QUEUE_SIZE];
-int stackTop = -1;
 
 uint32_t messageIDCounter = 1;
 
 int head = 0;   
 int tail = 0;   
 int count = 0;  
-
-
-
 
 
 // ------------------ Interrupt ------------------
@@ -227,52 +223,67 @@ void updateBLE(BLENotifyHandler &bleServer,
                int AlarmFlag) {
 
     static bool wasConnected = false;
+    static bool waitingAck = false;     
+    static uint32_t currentMsgID = 0;   
+
     bool isNowConnected = bleServer.isConnected();
 
     pushData(traj, floorInt, pressure, AlarmFlag);
 
     if (isNowConnected) {
+
         if (!wasConnected) {
             Serial.println("[BLE] Connected.");
             wasConnected = true;
         }
 
+        if (waitingAck) {
+
+            if (bleServer.lastClientID == currentMsgID) {
+
+                Serial.print("[QUEUE ACK] MsgID: ");
+                Serial.println(currentMsgID);
+
+                head = (head + 1) % QUEUE_SIZE;
+                count--;
+
+                bleServer.lastClientID = 0;
+                waitingAck = false;
+            }
+
+            // return; 
+        }
+
+
         if (count > 0) {
+
             BLEPacket &packet = dataQueue[head];
 
             bleServer.setMode(packet.mode);
             bleServer.setFloor(packet.floor);
             bleServer.setPressure(packet.pressure);
             bleServer.setTime(packet.alarmFlag);
-            bleServer.setMessageID(packet.msgID); 
+            bleServer.setMessageID(packet.msgID);
             bleServer.update();
 
             Serial.print("[QUEUE SEND] MsgID: ");
             Serial.println(packet.msgID);
 
-            if (bleServer.lastClientID == packet.msgID) {
-                head = (head + 1) % QUEUE_SIZE;
-                count--;
-                bleServer.lastClientID = 0;
-
-                Serial.print("[QUEUE ACK] MsgID: ");
-                Serial.println(packet.msgID);
-            }
+            currentMsgID = packet.msgID;
+            waitingAck = true;
         }
 
     } else {
-        if (wasConnected) Serial.println("[BLE] Disconnected.");
+
+        if (wasConnected) {
+            Serial.println("[BLE] Disconnected.");
+        }
+
         wasConnected = false;
+        waitingAck = false;  
         bleServer.restartAdvertising();
     }
 }
-
-
-
-
-
-
-
 
 
 void patterndection(double x) {
@@ -302,9 +313,6 @@ void patterndection(double x) {
     }
 }
 
-
-
-
 void setup() {
     Serial.begin(115200);
     bleServer.begin();
@@ -319,24 +327,24 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(SWA_IO), updateBaselineInterrupt, CHANGE); 
     AlarmFlag=0;
     
-    startMillis = millis();
 }
 
 
 unsigned long previousMillisforBLE = 0;
 const unsigned long intervalforBLE = 500;      
 
-unsigned long previousMillisforAlarm = 0;
-const unsigned long intervalForAlarm = 800;    
+static bool wasConnected = false;
+bool isConnected = bleServer.isConnected();
+
+
 
 void loop() {
     handleBlinkFlag();
     unsigned long currentMillis = millis();
 
-
-
     if (currentMillis - previousMillisforBLE >= intervalforBLE) {
-        AlarmFlag++;
+        previousMillisforBLE = currentMillis;
+
         updateEnvData();
         patterndection(env.pressure);
         updateFloor();
@@ -344,19 +352,32 @@ void loop() {
         // imu.printScaled();
         int traj = handleMovement();  
         // printEnvData();
-        previousMillisforBLE = currentMillis;
-        updateBLE(bleServer, traj, floorInt, env.pressure, AlarmFlag);
 
-
-        if (bleServer.lastClientID > 0) {  
-            bleServer.lastClientID = 0;    
+        float accSquared = sqrt(
+            imu.accX()*imu.accX() +
+            imu.accY()*imu.accY() +
+            imu.accZ()*imu.accZ()
+        );
+        if(accSquared>1100||accSquared<950)
+        {
+            AlarmFlag=1;
         }
+        else
+        {
+            AlarmFlag=0;
+        }
+
+        if (floorInt != lastFloor || AlarmFlag != lastAlarmFlag || (!wasConnected && isConnected)) {
+            updateBLE(bleServer, traj, floorInt, env.pressure, AlarmFlag);
+            lastFloor = floorInt;
+            lastAlarmFlag = AlarmFlag;
+        }
+
+        wasConnected = isConnected;
+        
+
 
     }
 
-    // if (currentMillis - previousMillisforAlarm >= intervalForAlarm) {
-    //     previousMillisforAlarm = currentMillis;
-    //     ;  
-    // }
 
 }
