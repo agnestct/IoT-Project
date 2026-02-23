@@ -1,18 +1,13 @@
 #include "BLEnotifyHandler.h"
 #include <Arduino.h>
 
-unsigned long previousMillisforble = 0;
-const unsigned long intervalforble = 1000; //BLE update period
-
-unsigned long connectTime = 0;
-const unsigned long waitAfterConnect = 2000; 
-bool justConnected = false;
-
-#define SERVICE_UUID "372208cd-18f9-47f4-b247-bba6aee0792a"
-#define FLOOR_CHAR_UUID "ff62f14e-c79b-40cc-88b8-f810c22436c3"
-#define PRESSURE_CHAR_UUID "7ff73492-7ce2-455e-a2af-5e356af0f039"
-#define MODE_CHAR_UUID "8191b89e-8fe6-434f-bce6-759ae6f62f6e"
-#define TIME_CHAR_UUID "2d1f529c-5054-43f4-b163-ce6c9fcaa5b0"
+#define SERVICE_UUID           "372208cd-18f9-47f4-b247-bba6aee0792a"
+#define FLOOR_CHAR_UUID        "ff62f14e-c79b-40cc-88b8-f810c22436c3"
+#define PRESSURE_CHAR_UUID     "7ff73492-7ce2-455e-a2af-5e356af0f039"
+#define MODE_CHAR_UUID         "8191b89e-8fe6-434f-bce6-759ae6f62f6e"
+#define TIME_CHAR_UUID         "2d1f529c-5054-43f4-b163-ce6c9fcaa5b0"
+#define ID_CHAR_UUID           "12345678-5054-43f4-b163-ce6c9fcaa5b0"
+#define CLIENT_MSG_CHAR_UUID   "abcdef01-1234-5678-90ab-bba6aee0792a"
 
 BLENotifyHandler::BLENotifyHandler()
     : pServer(nullptr),
@@ -20,12 +15,15 @@ BLENotifyHandler::BLENotifyHandler()
       pressureChar(nullptr),
       modeChar(nullptr),
       timeChar(nullptr),
+      idChar(nullptr),
+      clientMsgChar(nullptr),
       deviceConnected(false),
       oldDeviceConnected(false),
       floorValue(3),
       pressureValue(101325.0),
       motionMode(1),
-      timeValue(0) {}
+      timeValue(0),
+      messageID(0) {}
 
 void BLENotifyHandler::begin() {
     BLEDevice::init("ESP32");
@@ -50,6 +48,14 @@ void BLENotifyHandler::begin() {
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
     timeChar->addDescriptor(new BLE2902());
 
+    idChar = pService->createCharacteristic(ID_CHAR_UUID,
+        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    idChar->addDescriptor(new BLE2902());
+
+    clientMsgChar = pService->createCharacteristic(CLIENT_MSG_CHAR_UUID,
+        BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
+    clientMsgChar->setCallbacks(new class MyWriteCallbacks(this));
+
     pService->start();
     startAdvertising();
 
@@ -57,34 +63,21 @@ void BLENotifyHandler::begin() {
 }
 
 void BLENotifyHandler::update() {
-    unsigned long currentMillisforble = millis();
-
     if (deviceConnected) {
+        floorChar->setValue((uint8_t*)&floorValue, sizeof(floorValue));
+        floorChar->notify();
 
-        // 刚连接，等待客户端初始化
-        if (justConnected) {
-            if (currentMillisforble - connectTime < waitAfterConnect) {
-                return;  // 等待
-            } else {
-                justConnected = false; // 等够时间了，清标记
-            }
-        }
+        pressureChar->setValue((uint8_t*)&pressureValue, sizeof(pressureValue));
+        pressureChar->notify();
 
-        if (currentMillisforble - previousMillisforble >= intervalforble) {
-            previousMillisforble = currentMillisforble;
+        modeChar->setValue((uint8_t*)&motionMode, sizeof(motionMode));
+        modeChar->notify();
 
-            floorChar->setValue((uint8_t*)&floorValue, sizeof(floorValue));
-            floorChar->notify();
+        timeChar->setValue((uint8_t*)&timeValue, sizeof(timeValue));
+        timeChar->notify();
 
-            pressureChar->setValue((uint8_t*)&pressureValue, sizeof(pressureValue));
-            pressureChar->notify();
-
-            modeChar->setValue((uint8_t*)&motionMode, sizeof(motionMode));
-            modeChar->notify();
-
-            timeChar->setValue((uint8_t*)&timeValue, sizeof(timeValue));
-            timeChar->notify();
-        }
+        idChar->setValue((uint8_t*)&messageID, sizeof(messageID));
+        idChar->notify();
     }
 
     if (!deviceConnected && oldDeviceConnected) {
@@ -97,7 +90,6 @@ void BLENotifyHandler::update() {
     }
 }
 
-
 void BLENotifyHandler::startAdvertising() {
     BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
@@ -108,8 +100,23 @@ void BLENotifyHandler::MyServerCallbacks::onConnect(BLEServer* pServer) {
     parent->deviceConnected = true;
     parent->connectTime = millis();
     parent->justConnected = true; 
+    Serial.println("Client connected");
 }
 
 void BLENotifyHandler::MyServerCallbacks::onDisconnect(BLEServer* pServer) {
     parent->deviceConnected = false;
+    Serial.println("Client disconnected");
 }
+
+void BLENotifyHandler::MyWriteCallbacks::onWrite(BLECharacteristic* pChar) {
+    String value = pChar->getValue();  
+    if (value.length() == sizeof(uint32_t)) {
+        uint32_t id;
+        value.getBytes((uint8_t*)&id, sizeof(id));  
+        parent->lastClientID = id;
+    }
+}
+
+
+
+

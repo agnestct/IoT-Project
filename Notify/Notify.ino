@@ -55,19 +55,24 @@ int AlarmFlag=0;
 int lastFloor = -1;
 int lastAlarmFlag = -1;
 
-#define STACK_SIZE 200
+#define QUEUE_SIZE 60
 
 struct BLEPacket {
     int mode;
     int floor;
     float pressure;
     int alarmFlag;
+    uint32_t msgID;
 };
 
-BLEPacket dataStack[STACK_SIZE];
+BLEPacket dataQueue[QUEUE_SIZE];
 int stackTop = -1;
 
+uint32_t messageIDCounter = 1;
 
+int head = 0;   
+int tail = 0;   
+int count = 0;  
 
 
 
@@ -196,36 +201,21 @@ int handleMovement() {
 // }
 
 bool pushData(int mode, int floor, float pressure, int alarmFlag) {
-    if (stackTop >= STACK_SIZE - 1) {
-        Serial.println("Stack full!");
-        return false;
+    if (count >= QUEUE_SIZE) {
+        Serial.print("[QUEUE] Overflow. Removed MsgID: ");
+        Serial.println(dataQueue[head].msgID);
+
+        head = (head + 1) % QUEUE_SIZE;
+        count--;
     }
 
-    stackTop++;
-    dataStack[stackTop] = {mode, floor, pressure, alarmFlag};
-    return true;
-}
+    uint32_t newMsgID = messageIDCounter++;
+    dataQueue[tail] = {mode, floor, pressure, alarmFlag, newMsgID};
+    tail = (tail + 1) % QUEUE_SIZE;
+    count++;
 
-bool sendBottomAndShift(BLENotifyHandler &bleServer) {
-    if (stackTop < 0) {
-        return false;
-    }
-
-    BLEPacket packet = dataStack[0];
-
-    bleServer.setMode(packet.mode);
-    bleServer.setFloor(packet.floor);
-    bleServer.setPressure(packet.pressure);
-    bleServer.setTime(packet.alarmFlag);
-    bleServer.update();
-    Serial.print("AlarmFlag: ");
-    Serial.println( AlarmFlag );  
-
-    for (int i = 0; i < stackTop; i++) {
-        dataStack[i] = dataStack[i + 1];
-    }
-
-    stackTop--;
+    Serial.print("[QUEUE PUSH] MsgID: ");
+    Serial.println(newMsgID);
 
     return true;
 }
@@ -236,30 +226,49 @@ void updateBLE(BLENotifyHandler &bleServer,
                float pressure,
                int AlarmFlag) {
 
-    if (bleServer.isConnected()) {
+    static bool wasConnected = false;
+    bool isNowConnected = bleServer.isConnected();
 
-        if (!sendBottomAndShift(bleServer)) {
-            bleServer.setMode(traj);
-            bleServer.setFloor(floorInt);
-            bleServer.setPressure(pressure);
-            bleServer.setTime(AlarmFlag);
-            bleServer.update();
-            Serial.print("AlarmFlag: ");
-            Serial.println( AlarmFlag );  
+    pushData(traj, floorInt, pressure, AlarmFlag);
+
+    if (isNowConnected) {
+        if (!wasConnected) {
+            Serial.println("[BLE] Connected.");
+            wasConnected = true;
         }
-        Serial.print("Stack size: ");
-        Serial.println(stackTop + 1);
+
+        if (count > 0) {
+            BLEPacket &packet = dataQueue[head];
+
+            bleServer.setMode(packet.mode);
+            bleServer.setFloor(packet.floor);
+            bleServer.setPressure(packet.pressure);
+            bleServer.setTime(packet.alarmFlag);
+            bleServer.setMessageID(packet.msgID); 
+            bleServer.update();
+
+            Serial.print("[QUEUE SEND] MsgID: ");
+            Serial.println(packet.msgID);
+
+            if (bleServer.lastClientID == packet.msgID) {
+                head = (head + 1) % QUEUE_SIZE;
+                count--;
+                bleServer.lastClientID = 0;
+
+                Serial.print("[QUEUE ACK] MsgID: ");
+                Serial.println(packet.msgID);
+            }
+        }
 
     } else {
-
-        pushData(traj, floorInt, pressure, AlarmFlag);
+        if (wasConnected) Serial.println("[BLE] Disconnected.");
+        wasConnected = false;
         bleServer.restartAdvertising();
-        Serial.println("Disconnected, pushed to stack.");
-        Serial.print("Stack size: ");
-        Serial.println(stackTop + 1);
-
     }
 }
+
+
+
 
 
 
@@ -303,7 +312,7 @@ void setup() {
     PressureSensorSetup();
     delay(50); 
     imu.begin(4, 3, 10000);
-    delay(1000);
+    delay(3000);
     readSensorData(env.temperature , env.pressure);
     baseline = env.pressure;
     pinMode(SWA_IO, INPUT);
@@ -315,40 +324,39 @@ void setup() {
 
 
 unsigned long previousMillisforBLE = 0;
-const unsigned long intervalforBLE = 100;      
+const unsigned long intervalforBLE = 500;      
 
 unsigned long previousMillisforAlarm = 0;
-const unsigned long intervalForAlarm = 1000;    
+const unsigned long intervalForAlarm = 800;    
 
 void loop() {
-
+    handleBlinkFlag();
     unsigned long currentMillis = millis();
 
 
-    handleBlinkFlag();
 
-    updateEnvData();
-
-    patterndection(env.pressure);
-
-    updateFloor();
-    
-    imu.update();
-    // imu.printScaled();
-
-    int traj = handleMovement();  
-
-    // printEnvData();
-    
     if (currentMillis - previousMillisforBLE >= intervalforBLE) {
+        AlarmFlag++;
+        updateEnvData();
+        patterndection(env.pressure);
+        updateFloor();
+        imu.update();
+        // imu.printScaled();
+        int traj = handleMovement();  
+        // printEnvData();
         previousMillisforBLE = currentMillis;
         updateBLE(bleServer, traj, floorInt, env.pressure, AlarmFlag);
 
+
+        if (bleServer.lastClientID > 0) {  
+            bleServer.lastClientID = 0;    
+        }
+
     }
-    // AlarmFlag 累加逻辑
-    if (currentMillis - previousMillisforAlarm >= intervalForAlarm) {
-        previousMillisforAlarm = currentMillis;
-        AlarmFlag++;  // 累加
-    }
+
+    // if (currentMillis - previousMillisforAlarm >= intervalForAlarm) {
+    //     previousMillisforAlarm = currentMillis;
+    //     ;  
+    // }
 
 }

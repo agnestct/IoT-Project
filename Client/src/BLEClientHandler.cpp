@@ -6,6 +6,8 @@ BLEUUID BLEClientHandler::floorUUID("ff62f14e-c79b-40cc-88b8-f810c22436c3");
 BLEUUID BLEClientHandler::pressureUUID("7ff73492-7ce2-455e-a2af-5e356af0f039");
 BLEUUID BLEClientHandler::modeUUID("8191b89e-8fe6-434f-bce6-759ae6f62f6e");
 BLEUUID BLEClientHandler::timeUUID("2d1f529c-5054-43f4-b163-ce6c9fcaa5b0");
+BLEUUID BLEClientHandler::idUUID("12345678-5054-43f4-b163-ce6c9fcaa5b0");  
+BLEUUID BLEClientHandler::clientMsgUUID("abcdef01-1234-5678-90ab-bba6aee0792a");
 
 boolean BLEClientHandler::doConnect = false;
 boolean BLEClientHandler::connected = false;
@@ -15,6 +17,8 @@ BLERemoteCharacteristic* BLEClientHandler::floorChar = nullptr;
 BLERemoteCharacteristic* BLEClientHandler::pressureChar = nullptr;
 BLERemoteCharacteristic* BLEClientHandler::modeChar = nullptr;
 BLERemoteCharacteristic* BLEClientHandler::timeChar = nullptr;
+BLERemoteCharacteristic* BLEClientHandler::idChar = nullptr;
+BLERemoteCharacteristic* BLEClientHandler::clientMsgChar = nullptr;
 
 BLEAdvertisedDevice* BLEClientHandler::myDevice = nullptr;
 
@@ -22,6 +26,7 @@ int BLEClientHandler::Floor = 0;
 float BLEClientHandler::Pressure = 0.0;
 uint8_t BLEClientHandler::Mode = 0;
 uint32_t BLEClientHandler::Time = 0;
+uint32_t BLEClientHandler::MessageID = 0;  
 
 void BLEClientHandler::notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic,
                                      uint8_t *pData, size_t length, bool isNotify) {
@@ -39,7 +44,15 @@ void BLEClientHandler::notifyCallback(BLERemoteCharacteristic *pBLERemoteCharact
     else if (uuid.equals(timeUUID)) {
         memcpy(&Time, pData, sizeof(Time));
     }
+    else if (uuid.equals(idUUID)) {
+        memcpy(&MessageID, pData, sizeof(MessageID));
 
+        if (clientMsgChar && clientMsgChar->canWrite()) {
+            clientMsgChar->writeValue((uint8_t*)&MessageID, sizeof(MessageID));
+            Serial.print("Sent back MessageID to server: ");
+            Serial.println(MessageID);
+        }
+    }
 }
 
 void BLEClientHandler::MyClientCallback::onDisconnect(BLEClient *pclient) {
@@ -68,15 +81,22 @@ bool BLEClientHandler::connectToServer() {
     BLERemoteService *pRemoteService = pClient->getService(serviceUUID);
     if (pRemoteService == nullptr) return false;
 
+
     floorChar = pRemoteService->getCharacteristic(floorUUID);
     pressureChar = pRemoteService->getCharacteristic(pressureUUID);
     modeChar = pRemoteService->getCharacteristic(modeUUID);
     timeChar = pRemoteService->getCharacteristic(timeUUID);
+    idChar = pRemoteService->getCharacteristic(idUUID);
+    clientMsgChar = pRemoteService->getCharacteristic(clientMsgUUID);
+    if (!clientMsgChar) Serial.println("clientMsgChar is nullptr!");
+    else Serial.println("clientMsgChar OK");
+
 
     if (floorChar && floorChar->canNotify()) floorChar->registerForNotify(notifyCallback);
     if (pressureChar && pressureChar->canNotify()) pressureChar->registerForNotify(notifyCallback);
     if (modeChar && modeChar->canNotify()) modeChar->registerForNotify(notifyCallback);
     if (timeChar && timeChar->canNotify()) timeChar->registerForNotify(notifyCallback);
+    if (idChar && idChar->canNotify()) idChar->registerForNotify(notifyCallback);
 
     connected = true;
     return true;
@@ -121,6 +141,7 @@ void BLEClientHandler::update() {
         Serial.print("Floor: "); Serial.print(Floor);
         Serial.print("\tPressure: "); Serial.print(Pressure);
         Serial.print("\tMotion Mode: "); Serial.print(Mode);
-        Serial.print("\tAlarmFlag: "); Serial.println(Time);
+        Serial.print("\tAlarmFlag: "); Serial.print(Time);
+        Serial.print("\tMessageID: "); Serial.println(MessageID);
     }
 }

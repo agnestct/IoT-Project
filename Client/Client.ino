@@ -64,10 +64,6 @@ void loop() {
     env.pattern = bleClient.Mode;
     AlarmFlag = bleClient.Time;
 
-    
-
-    
-
    if(ensureWiFiConnected(ssid, password)){
 
         if (env.floor != lastFloor) {

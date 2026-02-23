@@ -20,6 +20,8 @@ private:
     static BLEUUID pressureUUID;
     static BLEUUID modeUUID;
     static BLEUUID timeUUID;
+    static BLEUUID idUUID;  
+    static BLEUUID clientMsgUUID; 
 
     // BLE client state
     static boolean doConnect;
@@ -30,6 +32,8 @@ private:
     static BLERemoteCharacteristic *pressureChar;
     static BLERemoteCharacteristic *modeChar;
     static BLERemoteCharacteristic *timeChar;
+    static BLERemoteCharacteristic* idChar;  
+    static BLERemoteCharacteristic* clientMsgChar;
 
     static BLEAdvertisedDevice *myDevice;
 
@@ -39,6 +43,7 @@ public:
     static float Pressure;
     static uint8_t Mode;
     static uint32_t Time;
+    static uint32_t MessageID;   
 
 private:
     bool connectToServer();
