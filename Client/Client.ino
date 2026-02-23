@@ -27,7 +27,7 @@ const char* firebaseUrl =
 
 BLEClientHandler bleClient;
 
-bool debug = true;
+bool debug = false;
 
 unsigned long previousMillis = 0;
 
@@ -66,7 +66,7 @@ void loop() {
 
    if(ensureWiFiConnected(ssid, password)){
 
-        if (env.floor != lastFloor) {
+        if (env.floor != lastFloor||) {
             lastFloor = env.floor;       
             lastPattern = env.pattern;  
 
