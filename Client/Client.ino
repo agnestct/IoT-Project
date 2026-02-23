@@ -7,7 +7,7 @@
 unsigned long lastSendTime = 0;
 const unsigned long sendInterval = 1000; // 1000ms
 float lastFloor = -1; 
-float lastPattern = -1; 
+float lastFlag = -1; 
 
 #define EAP_IDENTITY "wzeng@kth.se"
 #define EAP_USERNAME "wzeng@kth.se"
@@ -66,9 +66,11 @@ void loop() {
 
    if(ensureWiFiConnected(ssid, password)){
 
-        if (env.floor != lastFloor||) {
+
+        if (env.floor != lastFloor;AlarmFlag!=lastFlag) {
+>>>>>>> 80a2722 (add resend function)
             lastFloor = env.floor;       
-            lastPattern = env.pattern;  
+            lastFlag = AlarmFlag;  
 
             diodes(0b11111111);    
             sendToFirebase(
