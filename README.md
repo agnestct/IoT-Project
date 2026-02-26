@@ -20,13 +20,13 @@ Key Features:
 🏗 Project Structure
 ```text
 .
-├── Client/               # BLE client for data acquisition
+├── Client/               # BLE client/ gateway firmware
 │   ├── Client.ino
 │   └── src/
 ├── data_collection/      # Data collection scripts
 │   ├── imu_data_collection/
 │   └── project/
-├── Notify/               # BLE notification / gateway firmware
+├── Notify/               # BLE notification for data acquisition
 │   ├── Notify.ino
 │   └── src/
 ├── train/                # MATLAB training scripts for linear regression & data analysis
@@ -36,8 +36,8 @@ Key Features:
 ```
 
 Notes:
-- Client/ handles sensor reading and BLE client communication
-- Notify/ acts as BLE gateway to Firebase
+- Client/ acts as BLE gateway to Firebase
+- Notify/ handles sensor reading and BLE client communication
 - data_collection/ is used for gathering sensor data for model training
 - train/ contains scripts for model training, visualization, and pressure calibration
 - WebUI/ shows the dashboard with floor, movement, pressure, and alarms
