@@ -18,6 +18,7 @@ Key Features:
 - Historical and live data visualization
 
 🏗 Project Structure
+```text
 .
 ├── Client/               # BLE client for data acquisition
 │   ├── Client.ino
@@ -32,6 +33,7 @@ Key Features:
 ├── WebUI/                # React web dashboard
 │   └── src/
 └── README.md
+```
 
 Notes:
 - Client/ handles sensor reading and BLE client communication
