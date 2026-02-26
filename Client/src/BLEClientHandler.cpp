@@ -51,6 +51,7 @@ void BLEClientHandler::notifyCallback(BLERemoteCharacteristic *pBLERemoteCharact
             clientMsgChar->writeValue((uint8_t*)&MessageID, sizeof(MessageID));
             Serial.print("Sent back MessageID to server: ");
             Serial.println(MessageID);
+            delay(10);
         }
     }
 }
@@ -135,13 +136,13 @@ void BLEClientHandler::update() {
         BLEDevice::getScan()->start(0);
     }
 
-    if (connected && (now - lastPrintTime >=300)) {
-        lastPrintTime = now;
-        Serial.print("BLE  ");
-        Serial.print("Floor: "); Serial.print(Floor);
-        Serial.print("\tPressure: "); Serial.print(Pressure);
-        Serial.print("\tMotion Mode: "); Serial.print(Mode);
-        Serial.print("\tAlarmFlag: "); Serial.print(Time);
-        Serial.print("\tMessageID: "); Serial.println(MessageID);
-    }
+    // if (connected && (now - lastPrintTime >=300)) {
+    //     lastPrintTime = now;
+    //     Serial.print("BLE  ");
+    //     Serial.print("Floor: "); Serial.print(Floor);
+    //     Serial.print("\tPressure: "); Serial.print(Pressure);
+    //     Serial.print("\tMotion Mode: "); Serial.print(Mode);
+    //     Serial.print("\tAlarmFlag: "); Serial.print(Time);
+    //     Serial.print("\tMessageID: "); Serial.println(MessageID);
+    // }
 }

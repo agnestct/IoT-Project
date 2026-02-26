@@ -27,7 +27,7 @@ const char* firebaseUrl =
 
 BLEClientHandler bleClient;
 
-bool debug = false;
+bool debug = true;
 
 unsigned long previousMillis = 0;
 
@@ -52,37 +52,88 @@ void setup() {
     diodes(0b00000000);
 }
 
+unsigned long lastCheck = 0;
+const unsigned long interval = 300;
+
+#define QUEUE_SIZE 8
+
+EnvData queue[QUEUE_SIZE];
+int head = 0; 
+int tail = 0; 
+int count = 0; 
+
+void enqueue(const EnvData& data) {
+    queue[head] = data;
+    head = (head + 1) % QUEUE_SIZE;
+    if (count < QUEUE_SIZE) {
+        count++;
+    } else {
+        tail = (tail + 1) % QUEUE_SIZE;
+    }
+}
+
+bool dequeue(EnvData &data) {
+    if (count == 0) return false;
+    data = queue[tail];
+    tail = (tail + 1) % QUEUE_SIZE;
+    count--;
+    return true;
+}
+
+
 void loop() {
 
-    
-    bleClient.update();
-    // wifi.maintainConnection();
+    if (millis() - lastCheck >= interval) {
+        lastCheck = millis();
 
+        bleClient.update();
 
-    env.pressure = bleClient.Pressure;
-    env.floor = bleClient.Floor;
-    env.pattern = bleClient.Mode;
-    AlarmFlag = bleClient.Time;
+        Serial.print("BLE  ");
+        Serial.print("Floor: "); Serial.print(bleClient.Floor);
+        Serial.print("\tPressure: "); Serial.print(bleClient.Pressure);
+        Serial.print("\tMotion Mode: "); Serial.print(bleClient.Mode);
+        Serial.print("\tAlarmFlag: "); Serial.print(bleClient.Time);
+        Serial.print("\tMessageID: "); Serial.println(bleClient.MessageID);
 
-   if(ensureWiFiConnected(ssid, password)){
+        env.pressure = bleClient.Pressure;
+        env.floor = bleClient.Floor;
+        env.pattern = bleClient.Mode;
+        AlarmFlag = bleClient.Time;
 
+        if (env.floor != lastFloor || AlarmFlag != lastFlag) {
+            lastFloor = env.floor;
+            lastFlag = AlarmFlag;
 
-        if (env.floor != lastFloor;AlarmFlag!=lastFlag) {
->>>>>>> 80a2722 (add resend function)
-            lastFloor = env.floor;       
-            lastFlag = AlarmFlag;  
+            EnvData data;
+            data.floor = env.floor;
+            data.pressure = env.pressure;
+            data.pattern = env.pattern;
+            data.alarmFlag = AlarmFlag;
+            data.timestamp = getTimeString();
 
-            diodes(0b11111111);    
+            enqueue(data);
+
+            Serial.println("Data enqueued");
+        }
+    }
+
+    if (ensureWiFiConnected(ssid, password)) {
+        EnvData toSend;
+        while (dequeue(toSend)) {
+            diodes(0b11111111);
+
             sendToFirebase(
                 firebaseUrl,
-                env.floor,
-                env.pressure,
-                env.pattern,
-                AlarmFlag,
-                getTimeString() 
+                toSend.floor,
+                toSend.pressure,
+                toSend.pattern,
+                toSend.alarmFlag,
+                toSend.timestamp
             );
+
+            Serial.print("WIFI MessageID: "); Serial.println(bleClient.MessageID);
+
             diodes(0b00000000);
         }
     }
-   
 }

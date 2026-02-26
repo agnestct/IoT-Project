@@ -13,6 +13,8 @@ struct EnvData {
   float height;       // m
   float floor;
   float pattern;
+  int alarmFlag;
+  String timestamp;
 
 };
 

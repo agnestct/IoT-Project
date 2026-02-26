@@ -78,7 +78,7 @@ bool sendToFirebase(const char* firebaseUrl,
   int code = http.POST(payload);
 
   if (code > 0) {
-    Serial.println("FireBase  ");
+    Serial.print("FireBase  ");
     Serial.println(payload);
     http.end();
     return true;

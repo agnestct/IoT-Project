@@ -104,10 +104,6 @@ void updateEnvData() {
 }
 
 void printEnvData() {
-    unsigned long currentMillis = millis();
-    if (currentMillis - previousMillis >= interval) {
-        previousMillis = currentMillis;
-
         Serial.print("Pressure: "); Serial.print(env.pressure);
         Serial.print(" | Floor: "); Serial.print(env.floor);
         Serial.print(" | Baseline: "); Serial.print(baseline);
@@ -147,9 +143,6 @@ void printEnvData() {
         Serial.print("  MAG Norm: ");
         Serial.println(magSquared, 6);
         Serial.println("****************");
-
-
-    }
 }
 
 
@@ -285,6 +278,174 @@ void updateBLE(BLENotifyHandler &bleServer,
     }
 }
 
+#define ACK_TIMEOUT_MS  600    
+#define MAX_RETRY       10      
+
+
+void processBLESend(BLENotifyHandler &bleServer) {
+
+    static bool wasConnected = false;
+    static bool waitingAck = false;
+    static uint32_t currentMsgID = 0;
+
+    bool isNowConnected = bleServer.isConnected();
+
+    if (isNowConnected) {
+
+        if (!wasConnected) {
+            Serial.println("[BLE] Connected.");
+            wasConnected = true;
+        }
+
+        if (waitingAck) {
+
+            if (bleServer.lastClientID == currentMsgID) {
+
+                Serial.print("[QUEUE ACK] MsgID: ");
+                Serial.println(currentMsgID);
+
+                head = (head + 1) % QUEUE_SIZE;
+                count--;
+
+                bleServer.lastClientID = 0;
+                waitingAck = false;
+            }
+            else {
+                return;
+            }
+        }
+
+        if (!waitingAck && count > 0) {
+
+            BLEPacket &packet = dataQueue[head];
+
+            bleServer.setMode(packet.mode);
+            bleServer.setFloor(packet.floor);
+            bleServer.setPressure(packet.pressure);
+            bleServer.setTime(packet.alarmFlag);
+            bleServer.setMessageID(packet.msgID);
+            bleServer.update();
+
+            Serial.print("[QUEUE SEND] MsgID: ");
+            Serial.println(packet.msgID);
+
+            currentMsgID = packet.msgID;
+            waitingAck = true;
+        }
+
+    } else {
+
+        if (wasConnected) {
+            Serial.println("[BLE] Disconnected.");
+        }
+
+        wasConnected = false;
+        waitingAck = false;
+        bleServer.restartAdvertising();
+    }
+}
+
+
+void processBLESendwithtime(BLENotifyHandler &bleServer) {
+
+    static bool wasConnected = false;
+    static bool waitingAck = false;
+    static uint32_t currentMsgID = 0;
+    static uint32_t sendTimestamp = 0;
+    static uint8_t retryCount = 0;
+
+    bool isNowConnected = bleServer.isConnected();
+
+    if (isNowConnected) {
+
+        if (!wasConnected) {
+            Serial.println("[BLE] Connected.");
+            wasConnected = true;
+        }
+
+
+        if (waitingAck) {
+
+            if (bleServer.lastClientID == currentMsgID) {
+
+                Serial.print("[QUEUE ACK] MsgID: ");
+                Serial.println(currentMsgID);
+
+                head = (head + 1) % QUEUE_SIZE;
+                count--;
+
+                bleServer.lastClientID = 0;
+                waitingAck = false;
+                retryCount = 0;
+            }
+            else {
+                if (millis() - sendTimestamp > ACK_TIMEOUT_MS) {
+
+                    if (retryCount < MAX_RETRY) {
+
+                        Serial.print("[QUEUE RETRY] MsgID: ");
+                        Serial.println(currentMsgID);
+
+                        BLEPacket &packet = dataQueue[head];
+
+                        bleServer.setMode(packet.mode);
+                        bleServer.setFloor(packet.floor);
+                        bleServer.setPressure(packet.pressure);
+                        bleServer.setTime(packet.alarmFlag);
+                        bleServer.setMessageID(packet.msgID);
+                        bleServer.update();
+
+                        sendTimestamp = millis();
+                        retryCount++;
+                    }
+                    else {
+                        Serial.print("[QUEUE DROP] MsgID: ");
+                        Serial.println(currentMsgID);
+
+                        head = (head + 1) % QUEUE_SIZE;
+                        count--;
+
+                        waitingAck = false;
+                        retryCount = 0;
+                    }
+                }
+                return;
+            }
+        }
+
+        if (!waitingAck && count > 0) {
+
+            BLEPacket &packet = dataQueue[head];
+
+            bleServer.setMode(packet.mode);
+            bleServer.setFloor(packet.floor);
+            bleServer.setPressure(packet.pressure);
+            bleServer.setTime(packet.alarmFlag);
+            bleServer.setMessageID(packet.msgID);
+            bleServer.update();
+
+            Serial.print("[QUEUE SEND] MsgID: ");
+            Serial.println(packet.msgID);
+
+            currentMsgID = packet.msgID;
+            waitingAck = true;
+            sendTimestamp = millis();
+            retryCount = 0;
+        }
+
+    } else {
+
+        if (wasConnected) {
+            Serial.println("[BLE] Disconnected.");
+        }
+
+        wasConnected = false;
+        waitingAck = false;
+        retryCount = 0;
+
+        bleServer.restartAdvertising();
+    }
+}
 
 void patterndection(double x) {
     float lambda;
@@ -338,46 +499,84 @@ bool isConnected = bleServer.isConnected();
 
 
 
+// void loop() {
+//     handleBlinkFlag();
+//     unsigned long currentMillis = millis();
+
+//     if (currentMillis - previousMillisforBLE >= intervalforBLE) {
+//         previousMillisforBLE = currentMillis;
+
+//         updateEnvData();
+//         patterndection(env.pressure);
+//         updateFloor();
+//         imu.update();
+//         // imu.printScaled();
+//         int traj = handleMovement();  
+//         // printEnvData();
+
+//         float accSquared = sqrt(
+//             imu.accX()*imu.accX() +
+//             imu.accY()*imu.accY() +
+//             imu.accZ()*imu.accZ()
+//         );
+//         if(accSquared>1100||accSquared<950)
+//         {
+//             AlarmFlag=1;
+//         }
+//         else
+//         {
+//             AlarmFlag=0;
+//         }
+
+//         if (floorInt != lastFloor || AlarmFlag != lastAlarmFlag || (!wasConnected && isConnected)) {
+//             updateBLE(bleServer, traj, floorInt, env.pressure, AlarmFlag);
+//             lastFloor = floorInt;
+//             lastAlarmFlag = AlarmFlag;
+//         }
+
+//         wasConnected = isConnected;
+        
+//     }
+// }
+
 void loop() {
+
     handleBlinkFlag();
     unsigned long currentMillis = millis();
 
     if (currentMillis - previousMillisforBLE >= intervalforBLE) {
+
         previousMillisforBLE = currentMillis;
 
         updateEnvData();
         patterndection(env.pressure);
         updateFloor();
         imu.update();
-        // imu.printScaled();
-        int traj = handleMovement();  
-        // printEnvData();
+
+        int traj = handleMovement();
 
         float accSquared = sqrt(
             imu.accX()*imu.accX() +
             imu.accY()*imu.accY() +
             imu.accZ()*imu.accZ()
         );
-        if(accSquared>1100||accSquared<950)
-        {
-            AlarmFlag=1;
-        }
-        else
-        {
-            AlarmFlag=0;
-        }
 
-        if (floorInt != lastFloor || AlarmFlag != lastAlarmFlag || (!wasConnected && isConnected)) {
-            updateBLE(bleServer, traj, floorInt, env.pressure, AlarmFlag);
+        if (accSquared > 1100 || accSquared < 950)
+            AlarmFlag = 1;
+        else
+            AlarmFlag = 0;
+
+        if (floorInt != lastFloor || AlarmFlag != lastAlarmFlag) {
+
+            pushData(traj, floorInt, env.pressure, AlarmFlag);
+
             lastFloor = floorInt;
             lastAlarmFlag = AlarmFlag;
         }
+    
+    processBLESendwithtime(bleServer);
 
-        wasConnected = isConnected;
-        
-
-
+    
     }
-
 
 }

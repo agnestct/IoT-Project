@@ -19,10 +19,10 @@ int MovementTracker::trackMovement(int currentPattern, float currentFloor) {
         // Serial.print("Movement ended at floor: ");
         // Serial.println(movementEndFloor);
 
-        Serial.print("Movement: from floor ");
-        Serial.print(movementStartFloor);
-        Serial.print(" to floor ");
-        Serial.println(movementEndFloor);
+        // Serial.print("Movement: from floor ");
+        // Serial.print(movementStartFloor);
+        // Serial.print(" to floor ");
+        // Serial.println(movementEndFloor);
 
         trajectory = ((movementEndFloor & 0x0F) << 4) | (movementStartFloor & 0x0F);
         movementStartFloor = -1;
