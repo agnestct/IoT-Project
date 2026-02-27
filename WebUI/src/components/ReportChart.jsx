@@ -56,28 +56,54 @@ function ReportChart({ history }) {
       </div>
 
       <h3 style={{ textAlign: "center" }}>Charts</h3>
-      <div style={{ height: 300 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="timestamp" />
-            <YAxis yAxisId="left" orientation="left" allowDecimals={false} domain={[1.5,7.5]} />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              domain={[
-                Math.min(...chartData.map(d => d.pressure)) * 0.9,
-                Math.max(...chartData.map(d => d.pressure)) * 1.1
-              ]}
-              tickFormatter={v => v.toFixed(1)}
-            />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="floor" fill="#8884d8" yAxisId="left" name="Floor" />
-            <Line type="monotone" dataKey="pressure" stroke="#82ca9d" yAxisId="right" name="Pressure" />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
+        <div style={{ height: 300 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              data={chartData.map((d, index) => ({
+                ...d,
+                _xIndex: index
+              }))}
+              margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+
+              <XAxis
+                dataKey="_xIndex"
+                tickFormatter={(index) => chartData[index]?.timestamp || ''}
+              />
+
+              <YAxis
+                yAxisId="left"
+                orientation="left"
+                allowDecimals={false}
+                domain={[1.5, 7.5]}
+              />
+
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                domain={[
+                  Math.min(...chartData.map(d => d.pressure)) - 100,
+                  Math.max(...chartData.map(d => d.pressure)) + 100
+                ]}
+                tickFormatter={v => v.toFixed(1)}
+              />
+
+              <Tooltip labelFormatter={(index) => chartData[index]?.timestamp || ''} />
+              <Legend />
+
+              <Bar dataKey="floor" fill="#8884d8" yAxisId="left" name="Floor" />
+
+              <Line
+                type="monotone"
+                dataKey="pressure"
+                stroke="#82ca9d"
+                yAxisId="right"
+                name="Pressure"
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
 
       <button onClick={() => setShowHistory(!showHistory)}>
         {showHistory ? "Hide History" : "Show History"}
@@ -86,13 +112,20 @@ function ReportChart({ history }) {
       {showHistory && (
         <div>
           <h3 style={{ textAlign: "center" }}>History</h3>
-          {historyData.map((item, index) => (
-            <div key={sliceStart + index} style={{ marginBottom: 5 }}>
-              {item.timestamp} - Floor: {item.floor}, Pressure: {item.pressure}, Pattern: {item.pattern}
-            </div>
-          ))}
+          {historyData.map((item, index) => {
+            const traj = item.pattern;
+            const startFloor = traj & 0x0F;           
+            const endFloor = (traj >> 4) & 0x0F;      
+
+            return (
+              <div key={sliceStart + index} style={{ marginBottom: 5 }}>
+                {item.timestamp} - Floor: {item.floor}, Pressure: {item.pressure} Pa, Last reported trajectory: Floor {startFloor} → Floor {endFloor}
+              </div>
+            );
+          })}
         </div>
       )}
+
     </div>
   );
 }

@@ -11,8 +11,9 @@ function StatusCard({ elevator }) {
       <h2 style={styles.title}>Last Status</h2>
       <p>Floor: {elevator.floor}</p>
       <p>Pressure: {elevator.pressure} Pa</p>
-      <p>Trajectory: Floor {startFloor} → Floor {endFloor}</p>
       <p>Timestamp: {elevator.timestamp}</p>
+      <p>Last Reported Trajectory: Floor {startFloor} → Floor {endFloor}</p>
+      
     </div>
   );
 }

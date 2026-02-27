@@ -1,6 +1,6 @@
 // components/FlowSpikeChart.jsx
 import React, { useState, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 class PatternDetector {
   constructor(Nmax = 10, gamma_th = 2.5, sigma2_hat = 0.25) {
@@ -29,7 +29,7 @@ class PatternDetector {
 }
 
 export default function FlowSpikeChart({ data }) {
-  const [intervalMinutes, setIntervalMinutes] = useState(30);
+  const [intervalMinutes, setIntervalMinutes] = useState(7);
   const [gammaTh, setGammaTh] = useState(250);
   const [sigma2, setSigma2] = useState(1);
 
@@ -93,8 +93,19 @@ export default function FlowSpikeChart({ data }) {
   }, [data, intervalMinutes, gammaTh, sigma2]);
 
   return (
-    <div>
-      <div style={{ marginBottom: 20, display: 'flex', gap: 20 }}>
+    <div style={{ width: '100%', height: 500 }}>
+      <div
+        style={{
+          fontSize: 22,
+          fontWeight: 'bold',
+          marginBottom: 15,
+          color: totalSpikes > 0 ? 'red' : 'black',
+        }}
+      >
+        Total {totalSpikes} {totalSpikes === 1 ? 'Anomaly' : 'Anomalies'} in Flow Count
+      </div>
+
+      <div style={{ marginBottom: 20, display: 'flex', gap: 20, justifyContent: 'center', alignItems: 'center' }}>
         <label>
           Interval Minutes:
           <input
@@ -110,7 +121,7 @@ export default function FlowSpikeChart({ data }) {
           Gamma Threshold:
           <input
             type="number"
-            step="0.1"
+            step="10"
             value={gammaTh}
             onChange={e =>
               setGammaTh(Math.max(0, Number(e.target.value)))
@@ -131,43 +142,49 @@ export default function FlowSpikeChart({ data }) {
         </label>
       </div>
 
-      <div
-        style={{
-          fontSize: 22,
-          fontWeight: 'bold',
-          marginBottom: 15,
-          color: totalSpikes > 0 ? 'red' : 'black',
-        }}
-      >
-        Total Anomaly Count: {totalSpikes}
-      </div>
 
-      <LineChart width={900} height={400} data={chartData}>
-        <CartesianGrid stroke="#eee" strokeDasharray="5 5" />
-        <XAxis dataKey="time" />
-        <YAxis />
-        <Tooltip />
-        <Line
-          type="monotone"
-          dataKey="count"
-          stroke="#8884d8"
-          name={`Count per ${intervalMinutes}min`}
-        />
-        <Line
-          type="monotone"
-          dataKey="T"
-          stroke="red"
-          name="T Value"
-          dot={false}
-        />
-        <Line
-          type="monotone"
-          dataKey="spike"
-          stroke="green"
-          name="Spike"
-          dot={{ r: 5 }}
-        />
-      </LineChart>
+
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData}>
+          <CartesianGrid stroke="#eee" strokeDasharray="5 5" />
+          <XAxis dataKey="time" />
+          <YAxis yAxisId="left" />
+          <YAxis yAxisId="right" orientation="right" />
+          <YAxis
+            yAxisId="spikeAxis"
+            orientation="right"
+            domain={[0, 1]}
+            tickCount={2}
+            tickFormatter={(val) => (val === 1 ? 'Anomaly' : 'Normal')}
+          />
+          <Tooltip />
+          <Legend verticalAlign="bottom" height={36} />
+          <Line
+            type="monotone"
+            dataKey="count"
+            stroke="#8884d8"
+            yAxisId="left"
+            name={`Count per ${intervalMinutes}min`}
+          />
+          <Line
+            type="monotone"
+            dataKey="T"
+            stroke="red"
+            yAxisId="right"
+            name="Anomaly Score"
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="spike"
+            stroke="green"
+            yAxisId="spikeAxis"
+            name="Spike"
+            dot={{ r: 5 }}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }
